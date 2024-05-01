@@ -15,7 +15,7 @@ global _start
 section .bss
 struct_stat: resb 144
 argc: resb 8
-argv: resb 8
+filename: resb 8
 
 section .text
 ; exit(rdi)
@@ -53,15 +53,19 @@ fstat:
     syscall
     ret
 
-main:
+read_file:
+    mov     [filename], rdi
+
     push    rbp
     mov     rbp, rsp
     sub     rsp, 16
 
-    ; open(file, O_RDONLY)
-    mov     rdi, [argv]
+    ; open(filename, O_RDONLY)
+    mov     rdi, [filename]
     mov     rsi, O_RDONLY
     call    open
+    cmp     rax, 0
+    jl      read_file_failed
     mov     DWORD [rbp - 0x04], eax
 
     mov     edi, DWORD [rbp - 0x04]
@@ -92,20 +96,48 @@ main:
     mov     edi, DWORD [rbp - 0x04]
     call    close
 
+    mov     rax, 0x00
+    add     rsp, 16
+    pop     rbp
+    ret
+read_file_failed:
+    mov     rax, -1
     add     rsp, 16
     pop     rbp
     ret
 
 _start:
-    ; argc
-    pop     rax
+    pop     rax ; = int argc
     mov     [argc], rax
-    pop     rax
+    mov     rax, rsp
 
-    add     rax, 8
-    mov     [argv], rax
+    pop     rax ; = const char* argv[]
+    mov     rbp, rsp
+    sub     rsp, 16
+    mov     [rbp - 8], rax          ; [rbp - 8] = argv
+    mov     QWORD [rbp - 16], 0x01  ; [rbp - 16] = i = 0
+loop_start:
+    mov     rax, [rbp - 16]
+    cmp     rax, [argc]
+    jge     loop_end_ok
 
-    call    main
+    ; read_file(argv[i])
+    lea     rax, [rbp - 8]
+    mov     rcx, [rbp - 16]
+    mov     rdi, [rax + rcx * 8]
+    call    read_file 
+    cmp     rax, -1
+    je      loop_end_bad
 
+    ; i++
+    mov     rcx, [rbp - 16]
+    inc     rcx
+    mov     [rbp - 16], rcx
+    jmp     loop_start
+
+loop_end_ok:
     mov     rdi, 0x00
+    jmp     exit
+loop_end_bad:
+    mov     rdi, -1
     jmp     exit

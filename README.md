@@ -1,5 +1,5 @@
 # catasm
-Simple cat-like command in x86-64 assembly
+Simple cat-like command in Linux x86-64 assembly
 
 # Build
 ```

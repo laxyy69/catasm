@@ -5,3 +5,7 @@ Simple cat-like command in Linux x86-64 assembly
 ```
 nasm -felf64 src/main.asm && ld src/main.o -o catasm
 ```
+# Usage
+```
+./catasm /path/to/file
+```
